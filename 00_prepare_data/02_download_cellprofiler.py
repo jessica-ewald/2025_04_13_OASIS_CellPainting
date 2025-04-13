@@ -7,6 +7,7 @@ Use AWS cli to download all CellProfiler profiles.
 import re
 
 from sh import aws
+from pathlib import Path
 
 
 def main() -> None:
@@ -15,10 +16,11 @@ def main() -> None:
     Read in index file, download data.
 
     """
-    aws_path = "s3://cellpainting-gallery/cpg0037-oasis/axiom/workspace/profiles"
-    batches = ["prod_25", "prod_26", "prod_27", "prod_30"]
+    aws_path = "s3://cellpainting-gallery/cpg0037-oasis/broad/workspace/profiles"
+    batches = ["2025_01_16_U2OS_Batch1", "2025_01_12_U2OS_Batch2", "2025_01_27_U2OS_Batch3", "2025_01_29_U2OS_Batch4"]
 
-    prof_dir = "../1_snakemake/inputs/profiles/cellprofiler/plates"
+    prof_dir = Path("../01_snakemake/inputs/profiles/cellprofiler/plates")
+    prof_dir.mkdir(parents=True, exist_ok=True)
 
     # get Dino embedding paths
     for batch in batches:
