@@ -26,7 +26,7 @@ def main() -> None:
     for batch in batches:
         batch_path = f"{aws_path}/{batch}/"
         aws_output = aws("s3", "ls", batch_path)
-        plates = re.findall(r"plate_\d{8}", aws_output)
+        plates = re.findall(r"BR\d{8}", aws_output)
 
         for plate in plates:
             aws("s3", "cp", f"{batch_path}{plate}/{plate}.csv.gz", f"{prof_dir}/{plate}.csv.gz")

@@ -10,15 +10,15 @@ def main() -> None:
     Merge profiles from each plate into one file and add metadata.
 
     """
-    input_profile_path = "../1_snakemake/inputs/profiles/cellprofiler/plates"
-    meta_path = "../1_snakemake/inputs/metadata/metadata.parquet"
-    output_profile_path = "../1_snakemake/inputs/profiles/cellprofiler/raw.parquet"
+    input_profile_path = "../01_snakemake/inputs/profiles/cellprofiler/plates"
+    meta_path = "../01_snakemake/inputs/metadata/metadata.parquet"
+    output_profile_path = "../01_snakemake/inputs/profiles/cellprofiler/raw.parquet"
 
     meta = pl.read_parquet(meta_path)
 
     profiles = []
     plates = os.listdir(input_profile_path)
-    plates = [i for i in plates if "plate_" in i]
+    plates = [i for i in plates if "BR" in i]
 
     # Get column schema
     schema = pl.read_csv(f"{input_profile_path}/{plates[0]}", infer_schema_length=10000)

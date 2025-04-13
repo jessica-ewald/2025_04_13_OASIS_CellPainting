@@ -5,41 +5,40 @@ Download all Axiom platemap and biochem metadata.
 """  # noqa: CPY001, INP001
 
 import re
-import os
+from pathlib import Path
 
 from sh import aws
-from pathlib import Path
 
 
 def main() -> None:
     """Download metadata.
 
     Read in index file, download data.
-
     """
-    aws_path = "s3://cellpainting-gallery/cpg0037-oasis/axiom/workspace/metadata"
-    local_meta = "../1_snakemake/inputs/metadata"
-    batches = ["prod_25", "prod_26", "prod_27", "prod_30"]
+    aws_path = "s3://cellpainting-gallery/cpg0037-oasis/broad/workspace/metadata"
 
-    os.makedirs(f"{local_meta}/metadata", exist_ok=True)
-    os.makedirs(f"{local_meta}/biochem", exist_ok=True)
+    metadata_dir = Path("../01_snakemake/inputs/metadata/plates/")
+    metadata_dir.mkdir(parents=True, exist_ok=True)
+
+    batches = [
+        "2025_01_16_U2OS_Batch1",
+        "2025_01_12_U2OS_Batch2",
+        "2025_01_27_U2OS_Batch3",
+        "2025_01_29_U2OS_Batch4",
+    ]
 
     # get metadata (both biochem.parquet and metadata.parquet)
     for batch in batches:
-        batch_path = f"{aws_path}/{batch}/"
+        batch_path = f"{aws_path}/{batch}/platemap/"
         aws_output = aws("s3", "ls", batch_path)
-        plates = re.findall(r"plate_\d{8}", aws_output)
+        plates = re.findall(r"BR\d{8}.txt", aws_output)
 
         for plate in plates:
-            metadata_file = Path(f"{local_meta}/metadata/metadata_{plate}.parquet")
-            biochem_file = Path(f"{local_meta}/biochem/biochem_{plate}.parquet")
+            metadata_file = metadata_dir / plate
 
-            # only download if the files doesn't already exist
+            # only download if the files don't already exist
             if not metadata_file.exists():
-                aws("s3", "cp", f"{batch_path}{plate}/metadata.parquet", str(metadata_file))
-
-            if not biochem_file.exists():
-                aws("s3", "cp", f"{batch_path}{plate}/biochem.parquet", str(biochem_file))
+                aws("s3", "cp", f"{batch_path}{plate}", str(metadata_file))
 
 
 if __name__ == "__main__":
