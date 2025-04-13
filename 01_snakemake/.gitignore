@@ -1,0 +1,12 @@
+.snakemake
+.ipynb_checkpoints
+.DS_Store
+__pycache__
+outputs
+inputs/images
+inputs/metadata
+inputs/profiles
+inputs/annotations/invitrodb
+.RData
+.RHistory
+.tab

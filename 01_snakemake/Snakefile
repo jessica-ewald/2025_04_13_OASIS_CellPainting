@@ -1,0 +1,23 @@
+configfile: "./inputs/conf/cellprofiler_ap.json"
+
+# Load rules
+include: "rules/common.smk"
+include: "rules/processing.smk"
+include: "rules/concresponse.smk"
+include: "rules/classifier.smk"
+include: "rules/visualize.smk"
+
+# Define wildcards
+name = config["name"]
+scenario = config["workflow"]
+categories = config["categories"]
+features = config["features"]
+
+rule all:
+     input:
+          f"outputs/{features}/{name}/classifier_results/axiom_continuous_predictions.parquet",
+          f"outputs/{features}/{name}/classifier_results/axiom_binary_predictions.parquet",
+          f"outputs/{features}/{name}/classifier_results/toxcast_cellfree_binary_predictions.parquet",
+          f"outputs/{features}/{name}/classifier_results/toxcast_cellbased_binary_predictions.parquet",
+          f"outputs/{features}/{name}/classifier_results/toxcast_cytotox_binary_predictions.parquet",
+          f"outputs/{features}/{name}/curves/plots/cp_plots.pdf",
