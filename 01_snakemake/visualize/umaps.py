@@ -8,45 +8,35 @@ from matplotlib.backends.backend_pdf import PdfPages
 matplotlib.use("Agg")
 
 
-def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, ldh_pod: str, mtt_pod: str, plot_path: str) -> None:
+def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, plot_path: str) -> None:
     data = pl.read_parquet(prof_path)
 
     cc = (
         pl.read_parquet(cc_pod)
         .filter(
-            pl.col("all.pass") == True,
+            (pl.col("all.pass") == True)
         )
         .select(["Metadata_Compound", "bmd"])
         .rename({"bmd": "Metadata_cc_POD"})
     )
-    ldh = (
-        pl.read_parquet(ldh_pod)
-        .filter(
-            pl.col("all.pass") == True,
-        )
+    morph = (
+        pl.read_parquet(morph_pod)
         .select(["Metadata_Compound", "bmd"])
-        .rename({"bmd": "Metadata_ldh_POD"})
+        .rename({"bmd": "Metadata_morph_POD"})
     )
-    mtt = (
-        pl.read_parquet(mtt_pod)
-        .filter(
-            pl.col("all.pass") == True,
-        )
-        .select(["Metadata_Compound", "bmd"])
-        .rename({"bmd": "Metadata_mtt_POD"})
-    )
-    morph = pl.read_parquet(morph_pod).select(["Metadata_Compound", "bmd"]).rename({"bmd": "Metadata_morph_POD"})
 
     # Add PODs to metadata
     data = data.join(cc, on="Metadata_Compound", how="left")
-    data = data.join(ldh, on="Metadata_Compound", how="left")
-    data = data.join(mtt, on="Metadata_Compound", how="left")
     data = data.join(morph, on="Metadata_Compound", how="left")
 
     # Add columns to label different sample subsets based on their bioactivity
     data = data.with_columns(
-        (pl.col("Metadata_Log10Conc") > pl.col("Metadata_morph_POD")).alias("Metadata_Bioactive"),
-        (pl.col("Metadata_Log10Conc") < pl.col("Metadata_cc_POD")).alias("Metadata_No_Cytotox"),
+        (pl.col("Metadata_Log10Conc") > pl.col("Metadata_morph_POD")).alias(
+            "Metadata_Bioactive"
+        ),
+        (pl.col("Metadata_Log10Conc") < pl.col("Metadata_cc_POD")).alias(
+            "Metadata_No_Cytotox"
+        ),
     )
 
     data = data.with_columns(
@@ -64,13 +54,14 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, ldh_pod: str, mtt_po
         .then(True)
         .otherwise(True)
         .alias("Metadata_No_Cytotox"),
-    )
+    ).sample(fraction=1.0, seed=42, shuffle=True)
 
     metadata_cols = [col for col in data.columns if "Metadata" in col]
 
     data = data.to_pandas()
-    data.sort_values(["Metadata_Plate", "Metadata_Well"], inplace=True)
-    data.index = [f"{row['Metadata_Plate']}__{row['Metadata_Well']}" for _, row in data.iterrows()]
+    data.index = [
+        f"{row['Metadata_Plate']}__{row['Metadata_Well']}" for _, row in data.iterrows()
+    ]
     data = data.loc[~data.index.duplicated(keep="first")]
 
     metadata = data[metadata_cols]
@@ -98,10 +89,10 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, ldh_pod: str, mtt_po
         sc.pl.embedding(
             adata,
             "X_umap",
-            color="Metadata_source",
+            color="Metadata_Count_Cells",
             s=10,
             show=False,
-            title="All samples (source)",
+            title="All samples (cell count)",
         )
         pdf.savefig()
         plt.close()
@@ -109,10 +100,10 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, ldh_pod: str, mtt_po
         sc.pl.embedding(
             adata,
             "X_umap",
-            color="Metadata_Count_Cells",
+            color="Metadata_Source",
             s=10,
             show=False,
-            title="All samples (cell count)",
+            title="All samples (batch)",
         )
         pdf.savefig()
         plt.close()

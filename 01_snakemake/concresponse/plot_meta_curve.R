@@ -5,12 +5,12 @@ require(ggforce)
 require(reshape2)
 
 if (!requireNamespace("fastbmdR", quietly = TRUE)) {
-  
+
   # Check if remotes is installed, and install it if not
   if (!requireNamespace("remotes", quietly = TRUE)) {
     install.packages("remotes")
   }
-  
+
   # Install fastbmdR from GitHub
   remotes::install_github("jessica-ewald/fastbmdR@v0.0.0.9000")
 }
@@ -60,6 +60,7 @@ meta_nm <- args[4]
 
 cc_pods <- read_parquet(cc_pod_path) %>% as.data.frame()
 cc <- read_parquet(cc_path) %>% as.data.frame()
+cc <- cc[cc$Metadata_well_type != "JUMP_control", ]
 
 highest_dose <- max(unique(cc$Metadata_Log10Conc))
 highest_dose <- round(highest_dose + (0.025 * highest_dose), 1)

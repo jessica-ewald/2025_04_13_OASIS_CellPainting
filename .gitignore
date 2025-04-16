@@ -167,5 +167,6 @@ cython_debug/
 test.ipynb
 s3_credentials.sh
 to_do.txt
+scratch/
 
 .sqlite

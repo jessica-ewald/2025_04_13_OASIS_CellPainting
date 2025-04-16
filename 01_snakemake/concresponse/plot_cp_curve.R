@@ -4,12 +4,12 @@ require(ggplot2)
 require(ggforce)
 
 if (!requireNamespace("fastbmdR", quietly = TRUE)) {
-  
+
   # Check if remotes is installed, and install it if not
   if (!requireNamespace("remotes", quietly = TRUE)) {
     install.packages("remotes")
   }
-  
+
   # Install fastbmdR from GitHub
   remotes::install_github("jessica-ewald/fastbmdR@v0.0.0.9000")
 }
@@ -60,6 +60,7 @@ cp_plot_path <- args[4]
 cp_pods <- read_parquet(cp_pod_path) %>% as.data.frame()
 cc_pods <- read_parquet(cc_pod_path) %>% as.data.frame()
 dat <- read_parquet(dist_path) %>% as.data.frame()
+dat <- dat[dat$Metadata_well_type != "JUMP_control", ]
 
 highest_dose <- max(unique(dat$Metadata_Log10Conc))
 highest_dose <- round(highest_dose + (0.025 * highest_dose), 1)
@@ -85,7 +86,7 @@ for (compound in cp_compounds){
   d <- temp_pod$d
   e <- temp_pod$e
   f <- temp_pod$f
-  
+
   f_dose <- switch(model,
                    "Exp2" = Exp2(b, c, d, e, f, dose),
                    "Exp3" = Exp3(b, c, d, e, f, dose),
@@ -95,9 +96,9 @@ for (compound in cp_compounds){
                    "Pow" = Pow(b, c, d, e, f, dose),
                    "Poly2" = Poly2(b, c, d, e, f, dose),
                    "Lin" = Lin(b, c, d, e, f, dose))
-  
+
   plot_results[, compound] <- f_dose
-  
+
   # get observations
   dat_temp <- dat[dat$Metadata_Compound == compound, ]
   if (grepl("_ap", cp_pod_path)) {
@@ -106,7 +107,7 @@ for (compound in cp_compounds){
     temp_dmso <- temp_dmso[sample(1:720, 20), c(feat_type, "Metadata_Log10Conc")]
   } else {
     temp_plates <- unique(dat_temp$Metadata_Plate)
-    temp_dmso <- dat[(dat$Metadata_Compound == "DMSO") & (dat$Metadata_Plate %in% temp_plates), 
+    temp_dmso <- dat[(dat$Metadata_Compound == "DMSO") & (dat$Metadata_Plate %in% temp_plates),
                     c(feat_type, "Metadata_Log10Conc")]
   }
 

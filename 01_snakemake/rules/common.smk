@@ -1,7 +1,7 @@
 # Imports
 import os
 import preprocessing as pp
-import classifier as cl
+#import classifier as cl
 import concresponse as cr
 import visualize as vs
 
@@ -9,7 +9,7 @@ features = config["features"]
 scenario = config["workflow"]
 name = config["name"]
 
-# Rules 
+# Rules
 rule compute_negcon_stats:
     input:
         f"inputs/profiles/{features}/raw.parquet",

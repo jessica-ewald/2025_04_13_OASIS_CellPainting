@@ -1,12 +1,13 @@
 """
 Functions to load metadata information
 """
+
 import logging
 from collections.abc import Iterable
 
-import pandas as pd
 
 logger = logging.getLogger(__name__)
+
 
 def find_feat_cols(cols: Iterable[str]):
     """Find column names for features"""

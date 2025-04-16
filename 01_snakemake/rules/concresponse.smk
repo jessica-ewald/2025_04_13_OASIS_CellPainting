@@ -15,7 +15,7 @@ rule compute_distances_R:
     shell:
         """
         for method in {params.distances}; do
-            method_name=$(echo $method | tr -d '[],"') 
+            method_name=$(echo $method | tr -d '[],"')
             Rscript concresponse/compute_distances.R {input} outputs/{features}/{name}/distances/${{method_name}}.parquet {params.cover_var} {params.treatment} {params.categories} ${{method_name}}
         done
         """
@@ -41,9 +41,10 @@ rule compile_distances:
         f"outputs/{features}/{name}/distances/distances.parquet",
     params:
         transform=config["dist_transform"],
+        filt_thresh=config["filt_thresh"],
     run:
         input_files = list(input)
-        cr.compile_dist.compile_dist(input_files, params.transform, *output)
+        cr.compile_dist.compile_dist(input_files, params.transform, params.filt_thresh, *output)
 
 
 rule fit_curves:
@@ -67,28 +68,6 @@ rule fit_curves_cc:
     shell:
         "Rscript concresponse/fit_curves_meta.R {input} {output} {params.num_sds} {params.meta_nm}"
 
-rule fit_curves_mtt:
-    input:
-        f"outputs/{features}/{name}/profiles/{scenario}.parquet",
-    output:
-        f"outputs/{features}/{name}/curves/mttpods.parquet",
-    params:
-        num_sds = config['num_sds'],
-        meta_nm = "Metadata_mtt_normalized"
-    shell:
-        "Rscript concresponse/fit_curves_meta.R {input} {output} {params.num_sds} {params.meta_nm}"
-
-rule fit_curves_ldh:
-    input:
-        f"outputs/{features}/{name}/profiles/{scenario}.parquet",
-    output:
-        f"outputs/{features}/{name}/curves/ldhpods.parquet",
-    params:
-        num_sds = config['num_sds'],
-        meta_nm = "Metadata_ldh_abs_signal"
-    shell:
-        "Rscript concresponse/fit_curves_meta.R {input} {output} {params.num_sds} {params.meta_nm}"
-
 rule select_pod:
     input:
         f"outputs/{features}/{name}/curves/bmds.parquet",
@@ -107,28 +86,6 @@ rule plot_cc_curve_fits:
         f"outputs/{features}/{name}/curves/plots/cc_plots.pdf",
     params:
         meta_nm = "Metadata_Count_Cells"
-    shell:
-        "Rscript concresponse/plot_meta_curve.R {input} {output} {params.meta_nm}"
-
-rule plot_mtt_curve_fits:
-    input:
-        f"outputs/{features}/{name}/curves/mttpods.parquet",
-        f"outputs/{features}/{name}/profiles/{scenario}.parquet",
-    output:
-        f"outputs/{features}/{name}/curves/plots/mtt_plots.pdf",
-    params:
-        meta_nm = "Metadata_mtt_normalized"
-    shell:
-        "Rscript concresponse/plot_meta_curve.R {input} {output} {params.meta_nm}"
-
-rule plot_ldh_curve_fits:
-    input:
-        f"outputs/{features}/{name}/curves/ldhpods.parquet",
-        f"outputs/{features}/{name}/profiles/{scenario}.parquet",
-    output:
-        f"outputs/{features}/{name}/curves/plots/ldh_plots.pdf",
-    params:
-        meta_nm = "Metadata_ldh_abs_signal"
     shell:
         "Rscript concresponse/plot_meta_curve.R {input} {output} {params.meta_nm}"
 

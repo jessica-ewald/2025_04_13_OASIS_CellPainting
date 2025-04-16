@@ -33,18 +33,23 @@ def aggregate_compound(method: str, dat: pl.DataFrame) -> pl.DataFrame:
 
         # if no pod, then use all profiles
         dat_filt = dat.filter(
-                ~pl.col("Metadata_OASIS_ID").is_in(agg_df.select(pl.col("Metadata_OASIS_ID")).to_series().to_list())
+            ~pl.col("Metadata_OASIS_ID").is_in(
+                agg_df.select(pl.col("Metadata_OASIS_ID")).to_series().to_list()
             )
-        agg_df = pl.concat([
-            agg_df,
-            pl.from_pandas(
-            pycytominer.aggregate(
-                    dat_filt.to_pandas(),
-                    strata=["Metadata_OASIS_ID"],
-                    features=feat_cols,
+        )
+        agg_df = pl.concat(
+            [
+                agg_df,
+                pl.from_pandas(
+                    pycytominer.aggregate(
+                        dat_filt.to_pandas(),
+                        strata=["Metadata_OASIS_ID"],
+                        features=feat_cols,
+                    ),
                 ),
-            )
-        ], how="vertical")
+            ],
+            how="vertical",
+        )
 
     elif method == "allpodcc":
         agg_df = pl.from_pandas(
@@ -60,35 +65,46 @@ def aggregate_compound(method: str, dat: pl.DataFrame) -> pl.DataFrame:
 
         # if no allpodcc, then use first profile after pod
         dat_filt = dat.filter(
-                ~pl.col("Metadata_OASIS_ID").is_in(agg_df.select(pl.col("Metadata_OASIS_ID")).to_series().to_list())
+            ~pl.col("Metadata_OASIS_ID").is_in(
+                agg_df.select(pl.col("Metadata_OASIS_ID")).to_series().to_list()
             )
-        agg_df = pl.concat([
-            agg_df,
-            pl.from_pandas(
-            pycytominer.aggregate(
-                    dat_filt.filter(
-                        pl.col("Metadata_Concentration") == pl.col("Metadata_MinConc"),
-                    ).to_pandas(),
-                    strata=["Metadata_OASIS_ID"],
-                    features=feat_cols,
+        )
+        agg_df = pl.concat(
+            [
+                agg_df,
+                pl.from_pandas(
+                    pycytominer.aggregate(
+                        dat_filt.filter(
+                            pl.col("Metadata_Concentration")
+                            == pl.col("Metadata_MinConc"),
+                        ).to_pandas(),
+                        strata=["Metadata_OASIS_ID"],
+                        features=feat_cols,
+                    ),
                 ),
-            )
-        ], how="vertical")
+            ],
+            how="vertical",
+        )
 
         # if still no pod, then use all
         dat_filt = dat.filter(
-                ~pl.col("Metadata_OASIS_ID").is_in(agg_df.select(pl.col("Metadata_OASIS_ID")).to_series().to_list())
+            ~pl.col("Metadata_OASIS_ID").is_in(
+                agg_df.select(pl.col("Metadata_OASIS_ID")).to_series().to_list()
             )
-        agg_df = pl.concat([
-            agg_df,
-            pl.from_pandas(
-            pycytominer.aggregate(
-                    dat_filt.to_pandas(),
-                    strata=["Metadata_OASIS_ID"],
-                    features=feat_cols,
+        )
+        agg_df = pl.concat(
+            [
+                agg_df,
+                pl.from_pandas(
+                    pycytominer.aggregate(
+                        dat_filt.to_pandas(),
+                        strata=["Metadata_OASIS_ID"],
+                        features=feat_cols,
+                    ),
                 ),
-            )
-        ], how="vertical")
+            ],
+            how="vertical",
+        )
 
     # Annotate with aggregation and feature type
     agg_df = agg_df.with_columns(pl.lit(method).alias("Metadata_AggType"))
@@ -114,10 +130,12 @@ def aggregate_profiles(
 
     # Add POD
     profiles = profiles.join(
-        pods.select(["Metadata_Compound", "bmd", "cc_POD"]).rename({
-            "bmd": "Metadata_POD",
-            "cc_POD": "Metadata_ccPOD",
-        }),
+        pods.select(["Metadata_Compound", "bmd", "cc_POD"]).rename(
+            {
+                "bmd": "Metadata_POD",
+                "cc_POD": "Metadata_ccPOD",
+            }
+        ),
         on="Metadata_Compound",
         how="left",
     )
