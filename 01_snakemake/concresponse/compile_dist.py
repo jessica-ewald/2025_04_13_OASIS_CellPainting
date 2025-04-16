@@ -1,5 +1,63 @@
 import polars as pl
 
+def filter_dist(thresh: int, dist: pl.DataFrame) -> pl.DataFrame:
+    dist = dist.with_columns(
+        pl.when(pl.col("Metadata_well_type") == "DMSO").then(pl.concat_str([pl.col("Metadata_Plate"), pl.col("Metadata_Compound")], separator="_"))
+        .otherwise(pl.concat_str([pl.col("Metadata_Compound"), pl.col("Metadata_Concentration")], separator="_")).alias("Metadata_Group")
+    )
+
+    # Get column types
+    meta_cols = [i for i in dist.columns if "Metadata" in i]
+    dist_cols = [i for i in dist.columns if "Metadata" not in i]
+
+    dist_long = dist.unpivot(
+        index=["Metadata_Group", "Metadata_Plate", "Metadata_Well"],
+        on=dist_cols,
+        variable_name="Distance_type",
+        value_name="Distance",
+    )
+
+    # Compute median and mad for each sample group
+    dist_median = dist.group_by("Metadata_Group").agg([
+        pl.median(col).alias(col) for col in dist_cols
+    ]).unpivot(
+        index="Metadata_Group",
+        on=dist_cols,
+        variable_name="Distance_type",
+        value_name="Median_distance",
+    )
+
+    dist_mad = dist.group_by("Metadata_Group").agg([
+        pl.col(col).map_elements(lambda x: (x - x.median()).abs().median(), return_dtype=pl.Float64).alias(col) for col in dist_cols
+    ]).unpivot(
+        index="Metadata_Group",
+        on=dist_cols,
+        variable_name="Distance_type",
+        value_name="MAD",
+    )
+
+    # Compute deviation relative to MAD and filter
+    dist_long = dist_long.join(dist_median, on=["Metadata_Group", "Distance_type"]).join(
+        dist_mad, on=["Metadata_Group", "Distance_type"] 
+    ).with_columns(
+        (pl.col("Distance") - pl.col("Median_distance")).abs().alias("Absolute_Deviation")
+    ).with_columns(
+        (pl.col("Absolute_Deviation")/pl.col("MAD")).log(base=2).alias("Log2_AD_MAD")
+    ).with_columns(
+        pl.when(pl.col("Log2_AD_MAD").abs() > thresh).then(pl.lit(None)).otherwise(pl.col("Distance")).alias("Distance_filtered")
+    )
+
+    # Convert back to wide format
+    dist_filt = dist_long.select(
+        ["Metadata_Plate", "Metadata_Well", "Distance_type", "Distance_filtered"]
+    ).pivot(
+        index=["Metadata_Plate", "Metadata_Well"],
+        on="Distance_type",
+        values="Distance_filtered"
+    )
+
+    return dist_filt
+
 
 def compile_dist(input_files: list, transform: str, output_path: str) -> None:
     dfs = []
