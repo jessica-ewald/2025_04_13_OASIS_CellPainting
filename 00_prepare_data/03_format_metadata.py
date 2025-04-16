@@ -72,16 +72,11 @@ def main() -> None:
         concs = temp.select(pl.col("Metadata_Concentration")).to_series().sort().unique().to_list()
 
         if len(concs) > 1:
-            if np.log10(concs[0]) < 0:
-                shift_val = np.abs(np.log10(concs[1] / concs[0]))
-
-                temp = temp.with_columns(
-                    (pl.col("Metadata_Concentration").log10() + shift_val).alias("Metadata_Log10Conc"),
-                )
-            else:
-                temp = temp.with_columns(
-                    pl.col("Metadata_Concentration").log10().alias("Metadata_Log10Conc"),
-                )
+            shift_val = np.abs(np.log10(concs[1] / concs[0])) # Get gap between doses on log-scale
+            min_conc = np.log10(concs[0])
+            temp = temp.with_columns(
+                (pl.col("Metadata_Concentration").log10() - min_conc + shift_val).alias("Metadata_Log10Conc"),
+            )
         else:
             temp = temp.with_columns(
                 (pl.lit(None)).alias("Metadata_Log10Conc")
