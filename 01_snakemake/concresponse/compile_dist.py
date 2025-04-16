@@ -59,7 +59,7 @@ def filter_dist(thresh: int, dist: pl.DataFrame) -> pl.DataFrame:
     return dist_filt
 
 
-def compile_dist(input_files: list, transform: str, output_path: str) -> None:
+def compile_dist(input_files: list, transform: str, thresh: int, output_path: str) -> None:
     dfs = []
     for fp in input_files:
         dat = pl.read_parquet(fp)
@@ -83,4 +83,7 @@ def compile_dist(input_files: list, transform: str, output_path: str) -> None:
         min_val = df_wide.select([pl.col(col).min() for col in dist_cols]).transpose().min().item()
         df_wide = df_wide.with_columns([(pl.col(col) - min_val + 1e-6).alias(col) for col in dist_cols])
 
-    df_wide.write_parquet(output_path)
+    # Filter out outlier replicates
+    df_wide_filt = filter_dist(thresh, df_wide)
+
+    df_wide_filt.write_parquet(output_path)

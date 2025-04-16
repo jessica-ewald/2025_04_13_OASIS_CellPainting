@@ -41,9 +41,10 @@ rule compile_distances:
         f"outputs/{features}/{name}/distances/distances.parquet",
     params:
         transform=config["dist_transform"],
+        filt_thresh=config["filt_thresh"],
     run:
         input_files = list(input)
-        cr.compile_dist.compile_dist(input_files, params.transform, *output)
+        cr.compile_dist.compile_dist(input_files, params.transform, params.filt_thresh, *output)
 
 
 rule fit_curves:
