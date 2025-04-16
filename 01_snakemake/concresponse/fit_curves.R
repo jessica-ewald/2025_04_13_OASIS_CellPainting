@@ -1,5 +1,6 @@
 require(dplyr)
 require(arrow)
+require(parallel)
 
 ######## 0. Make sure fastbmdR is installed
 if (!requireNamespace("fastbmdR", quietly = TRUE)) {
@@ -36,8 +37,8 @@ dat_comp <- dat[dat$Metadata_Compound != ctrl, ]
 
 feat_cols <- colnames(dat)[!grepl("Metadata", colnames(dat))]
 
-bmd_res <- data.frame()
-for (compound in compounds){
+# Define function to calculate BMD per compound
+fit_compound <- function(compound) {
   comp_fit <- dat[dat$Metadata_Compound == compound, ]
 
   if (grepl("_ap", input_path)) {
@@ -51,17 +52,24 @@ for (compound in compounds){
   dat_fit <- rbind(dmso_fit, comp_fit)
   dat_fit <- dat_fit[order(dat_fit$Metadata_Concentration), ]
 
-  dat_mat <- t(dat_fit[,feat_cols])
+  dat_mat <- t(dat_fit[, feat_cols])
   rownames(dat_mat) <- feat_cols
 
   dose <- c(dat_fit$Metadata_Log10Conc)
 
-  pod <- scoresPOD(dat_mat, dose, log10.dose = TRUE, num.sds = num_sds,
-                   filt.var = "SDres")
+  pod <- scoresPOD(dat_mat, dose, log10.dose = TRUE, num.sds = num_sds, filt.var = "SDres")
   if (!is.null(pod)) {
     pod$Metadata_Compound <- compound
-    bmd_res <- rbind(bmd_res, pod)
+    return(pod)
+  } else {
+    return(NULL)
   }
 }
 
+# Use parallel processing
+cores <- detectCores() - 1
+results <- mclapply(compounds, fit_compound, mc.cores = cores)
+
+# Combine results and save
+bmd_res <- do.call(rbind, results)
 write_parquet(as.data.frame(bmd_res), output_path)
