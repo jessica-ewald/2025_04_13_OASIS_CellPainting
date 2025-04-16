@@ -72,11 +72,16 @@ def main() -> None:
         concs = temp.select(pl.col("Metadata_Concentration")).to_series().sort().unique().to_list()
 
         if len(concs) > 1:
-            shift_val = np.abs(np.log10(concs[1] / concs[0]))
+            if np.log10(concs[0]) < 0:
+                shift_val = np.abs(np.log10(concs[1] / concs[0]))
 
-            temp = temp.with_columns(
-                (pl.col("Metadata_Concentration").log10() + shift_val).alias("Metadata_Log10Conc"),
-            )
+                temp = temp.with_columns(
+                    (pl.col("Metadata_Concentration").log10() + shift_val).alias("Metadata_Log10Conc"),
+                )
+            else:
+                temp = temp.with_columns(
+                    pl.col("Metadata_Concentration").log10().alias("Metadata_Log10Conc"),
+                )
         else:
             temp = temp.with_columns(
                 (pl.lit(None)).alias("Metadata_Log10Conc")
@@ -110,10 +115,23 @@ def main() -> None:
     meta_log10 = meta_log10.with_columns(
         pl.when(pl.col("Metadata_Concentration") == 0).then(pl.lit("DMSO")).otherwise(pl.col("Metadata_Compound")).alias("Metadata_Compound")
     )
-
     meta_log10 = meta_log10.with_columns(
         pl.when(pl.col("Metadata_Compound").is_null()).then(pl.col("Metadata_Broad_ID")).otherwise(pl.col("Metadata_Compound")).alias("Metadata_Compound")
     )
+
+    # Add plate-level annotations
+    meta_log10 = meta_log10.with_columns(
+        pl.col("Metadata_Plate").str.replace("BR00146", "").cast(pl.Int32).alias("Metadata_temp")
+    ).with_columns(
+        pl.when(pl.col("Metadata_temp") < 87).then(pl.lit("Batch_2"))
+            .when((pl.col("Metadata_temp") > 86) & (pl.col("Metadata_temp") < 122)).then(pl.lit("Batch_1"))
+            .when((pl.col("Metadata_temp") > 121) & (pl.col("Metadata_temp") < 159)).then(pl.lit("Batch_3"))
+            .when((pl.col("Metadata_temp") > 158) & (pl.col("Metadata_temp") < 195)).then(pl.lit("Batch_3"))
+            .when(pl.col("Metadata_temp") == 195).then(pl.lit("Batch_1"))
+            .when(pl.col("Metadata_temp") == 197).then(pl.lit("Batch_2"))
+            .when(pl.col("Metadata_temp") == 196).then(pl.lit("Batch_3")).alias("Metadata_Source"),
+        pl.when(pl.col("Metadata_temp") > 193).then(pl.lit("Target2")).otherwise(pl.lit("OASIS")).alias("Metadata_plate_type")
+    ).drop("Metadata_temp")
 
     meta_log10.write_parquet("../01_snakemake/inputs/metadata/metadata.parquet")
 
