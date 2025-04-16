@@ -14,7 +14,7 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, plot_path: str) -> N
     cc = (
         pl.read_parquet(cc_pod)
         .filter(
-            pl.col("all.pass"),
+            (pl.col("all.pass") == True)
         )
         .select(["Metadata_Compound", "bmd"])
         .rename({"bmd": "Metadata_cc_POD"})
@@ -40,26 +40,25 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, plot_path: str) -> N
     )
 
     data = data.with_columns(
-        pl.when(not pl.col("Metadata_Bioactive"))
+        pl.when(pl.col("Metadata_Bioactive") == False)
         .then(False)
-        .when(pl.col("Metadata_Bioactive"))
+        .when(pl.col("Metadata_Bioactive") == True)
         .then(True)
         .otherwise(False)
         .alias("Metadata_Bioactive"),
     )
     data = data.with_columns(
-        pl.when(not pl.col("Metadata_No_Cytotox"))
+        pl.when(pl.col("Metadata_No_Cytotox") == False)
         .then(False)
-        .when(pl.col("Metadata_No_Cytotox"))
+        .when(pl.col("Metadata_No_Cytotox") == True)
         .then(True)
         .otherwise(True)
         .alias("Metadata_No_Cytotox"),
-    )
+    ).sample(fraction=1.0, seed=42, shuffle=True)
 
     metadata_cols = [col for col in data.columns if "Metadata" in col]
 
     data = data.to_pandas()
-    data.sort_values(["Metadata_Plate", "Metadata_Well"], inplace=True)
     data.index = [
         f"{row['Metadata_Plate']}__{row['Metadata_Well']}" for _, row in data.iterrows()
     ]

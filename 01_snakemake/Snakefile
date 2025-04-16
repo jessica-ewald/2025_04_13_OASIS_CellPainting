@@ -18,6 +18,6 @@ rule all:
           #f"outputs/{features}/{name}/classifier_results/toxcast_cellfree_binary_predictions.parquet",
           #f"outputs/{features}/{name}/classifier_results/toxcast_cellbased_binary_predictions.parquet",
           #f"outputs/{features}/{name}/classifier_results/toxcast_cytotox_binary_predictions.parquet",
-          #f"outputs/{features}/{name}/figures/umaps.pdf",
+          f"outputs/{features}/{name}/figures/umaps.pdf",
           f"outputs/{features}/{name}/curves/plots/cp_plots.pdf",
           #f"outputs/{features}/{name}/curves/plots/cc_plots.pdf",

@@ -55,6 +55,7 @@ fit_compound <- function(compound) {
   dat_mat <- t(dat_fit[, feat_cols])
   rownames(dat_mat) <- feat_cols
 
+  # need to handle NaNs
   dose <- c(dat_fit$Metadata_Log10Conc)
 
   pod <- scoresPOD(dat_mat, dose, log10.dose = TRUE, num.sds = num_sds, filt.var = "SDres")

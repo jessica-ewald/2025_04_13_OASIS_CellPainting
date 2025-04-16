@@ -11,7 +11,7 @@
     "control": "DMSO",
     "distances_R": ["gmd", "cmd"],
     "distances_python": [],
-    "filt_thresh": 5,
+    "filt_thresh": 10,
     "categories": [
         "Cells_AGP", "Cells_DNA", "Cells_Mito", "Cells_RNA", "Cells_ER", "Cells_AreaShape",
         "Nuclei_AGP", "Nuclei_DNA", "Nuclei_Mito", "Nuclei_RNA", "Nuclei_ER", "Nuclei_AreaShape",

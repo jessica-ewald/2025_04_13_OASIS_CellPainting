@@ -2,6 +2,9 @@ import polars as pl
 
 
 def filter_dist(thresh: int, dist: pl.DataFrame) -> pl.DataFrame:
+    meta_cols = [i for i in dist.columns if "Metadata" in i]
+    dist_meta = dist.select(meta_cols)
+    
     dist = dist.with_columns(
         pl.when(pl.col("Metadata_well_type") == "DMSO")
         .then(
@@ -74,12 +77,14 @@ def filter_dist(thresh: int, dist: pl.DataFrame) -> pl.DataFrame:
             .log(base=2)
             .alias("Log2_AD_MAD")
         )
-        .with_columns(
-            pl.when(pl.col("Log2_AD_MAD").abs() > thresh)
-            .then(pl.lit(None))
-            .otherwise(pl.col("Distance"))
-            .alias("Distance_filtered")
-        )
+    .with_columns(
+        pl.when(pl.col("Absolute_Deviation") == 0)
+        .then(pl.col("Distance"))
+        .when(pl.col("Log2_AD_MAD").abs() > thresh)
+        .then(pl.lit(None))
+        .otherwise(pl.col("Distance"))
+        .alias("Distance_filtered")
+    )
     )
 
     # Convert back to wide format
@@ -89,7 +94,10 @@ def filter_dist(thresh: int, dist: pl.DataFrame) -> pl.DataFrame:
         index=["Metadata_Plate", "Metadata_Well"],
         on="Distance_type",
         values="Distance_filtered",
-    )
+    ).drop_nulls()
+
+    # put metadata back
+    dist_filt = dist_meta.join(dist_filt, on=["Metadata_Plate", "Metadata_Well"])
 
     return dist_filt
 
