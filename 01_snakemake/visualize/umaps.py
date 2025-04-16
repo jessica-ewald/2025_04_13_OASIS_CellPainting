@@ -89,6 +89,17 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, plot_path: str) -> N
         plt.close()
 
         sc.pl.embedding(
+            adata,
+            "X_umap",
+            color="Metadata_Source",
+            s=10,
+            show=False,
+            title="All samples (batch)",
+        )
+        pdf.savefig()
+        plt.close()
+
+        sc.pl.embedding(
             adata_bioactive,
             "X_umap",
             color="Metadata_Count_Cells",
