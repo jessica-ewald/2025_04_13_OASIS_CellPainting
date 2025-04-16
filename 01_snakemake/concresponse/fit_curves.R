@@ -26,6 +26,7 @@ ctrl <- "DMSO"
 
 ######## 2. Calculate BMDs from global mahalanobis distances
 dat <- read_parquet(input_path) %>% as.data.frame()
+dat <- dat[dat$Metadata_well_type != "JUMP_control", ]
 
 compounds <- unique(dat$Metadata_Compound)
 compounds <- compounds[!grepl(ctrl, compounds)]

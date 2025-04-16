@@ -8,7 +8,7 @@ from matplotlib.backends.backend_pdf import PdfPages
 matplotlib.use("Agg")
 
 
-def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, ldh_pod: str, mtt_pod: str, plot_path: str) -> None:
+def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, plot_path: str) -> None:
     data = pl.read_parquet(prof_path)
 
     cc = (
@@ -19,28 +19,10 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, ldh_pod: str, mtt_po
         .select(["Metadata_Compound", "bmd"])
         .rename({"bmd": "Metadata_cc_POD"})
     )
-    ldh = (
-        pl.read_parquet(ldh_pod)
-        .filter(
-            pl.col("all.pass") == True,
-        )
-        .select(["Metadata_Compound", "bmd"])
-        .rename({"bmd": "Metadata_ldh_POD"})
-    )
-    mtt = (
-        pl.read_parquet(mtt_pod)
-        .filter(
-            pl.col("all.pass") == True,
-        )
-        .select(["Metadata_Compound", "bmd"])
-        .rename({"bmd": "Metadata_mtt_POD"})
-    )
     morph = pl.read_parquet(morph_pod).select(["Metadata_Compound", "bmd"]).rename({"bmd": "Metadata_morph_POD"})
 
     # Add PODs to metadata
     data = data.join(cc, on="Metadata_Compound", how="left")
-    data = data.join(ldh, on="Metadata_Compound", how="left")
-    data = data.join(mtt, on="Metadata_Compound", how="left")
     data = data.join(morph, on="Metadata_Compound", how="left")
 
     # Add columns to label different sample subsets based on their bioactivity
@@ -95,17 +77,6 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, ldh_pod: str, mtt_po
     sc.tl.umap(adata_nocytotox)
 
     with PdfPages(plot_path) as pdf:
-        sc.pl.embedding(
-            adata,
-            "X_umap",
-            color="Metadata_source",
-            s=10,
-            show=False,
-            title="All samples (source)",
-        )
-        pdf.savefig()
-        plt.close()
-
         sc.pl.embedding(
             adata,
             "X_umap",

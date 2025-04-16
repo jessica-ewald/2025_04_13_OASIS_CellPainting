@@ -60,6 +60,7 @@ cp_plot_path <- args[4]
 cp_pods <- read_parquet(cp_pod_path) %>% as.data.frame()
 cc_pods <- read_parquet(cc_pod_path) %>% as.data.frame()
 dat <- read_parquet(dist_path) %>% as.data.frame()
+dat <- dat[dat$Metadata_well_type != "JUMP_control", ]
 
 highest_dose <- max(unique(dat$Metadata_Log10Conc))
 highest_dose <- round(highest_dose + (0.025 * highest_dose), 1)

@@ -28,6 +28,7 @@ ctrl <- "DMSO"
 
 ######## 2. Calculate BMDs from cell counts
 dat <- read_parquet(dat_path) %>% as.data.frame()
+dat <- dat[dat$Metadata_well_type != "JUMP_control", ]
 
 compounds <- unique(dat$Metadata_Compound)
 compounds <- compounds[compounds != ctrl]
