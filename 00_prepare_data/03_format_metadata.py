@@ -4,12 +4,7 @@ from pathlib import Path
 import numpy as np
 import polars as pl
 
-meta_keep = [
-    "plate_map_name",
-    "well_position",
-    "BatchId",
-    "Concentration(uM)"
-]
+meta_keep = ["plate_map_name", "well_position", "BatchId", "Concentration(uM)"]
 
 
 def process_meta(input_meta_path: str, meta_nms: list) -> pl.DataFrame:
@@ -49,18 +44,35 @@ def main() -> None:
         meta.append(process_meta(plate_path, meta_nms))
 
     meta = pl.concat(meta, how="vertical_relaxed")
-    meta = meta.rename({
-        "Metadata_plate_map_name": "Metadata_Plate",
-        "Metadata_well_position": "Metadata_Well",
-        "Metadata_BatchId": "Metadata_Broad_ID",
-        "Metadata_Concentration(uM)": "Metadata_Concentration",
-    }).with_columns(
-        pl.when(pl.col("Metadata_Concentration").is_null()).then(pl.lit(0)).otherwise(pl.col("Metadata_Concentration")).alias("Metadata_Concentration")
-    ).with_columns(
-        pl.concat_str(["Metadata_Broad_ID", "Metadata_Concentration"], separator="_").alias("Metadata_Perturbation"),
+    meta = (
+        meta.rename(
+            {
+                "Metadata_plate_map_name": "Metadata_Plate",
+                "Metadata_well_position": "Metadata_Well",
+                "Metadata_BatchId": "Metadata_Broad_ID",
+                "Metadata_Concentration(uM)": "Metadata_Concentration",
+            }
+        )
+        .with_columns(
+            pl.when(pl.col("Metadata_Concentration").is_null())
+            .then(pl.lit(0))
+            .otherwise(pl.col("Metadata_Concentration"))
+            .alias("Metadata_Concentration")
+        )
+        .with_columns(
+            pl.concat_str(
+                ["Metadata_Broad_ID", "Metadata_Concentration"], separator="_"
+            ).alias("Metadata_Perturbation"),
+        )
     )
 
-    compounds = meta.filter(pl.col("Metadata_Concentration") != 0).select("Metadata_Broad_ID").to_series().unique().to_list()
+    compounds = (
+        meta.filter(pl.col("Metadata_Concentration") != 0)
+        .select("Metadata_Broad_ID")
+        .to_series()
+        .unique()
+        .to_list()
+    )
 
     meta_log10 = meta.filter(pl.col("Metadata_Concentration") == 0).with_columns(
         pl.lit(0).cast(pl.Float64).alias("Metadata_Log10Conc"),
@@ -69,66 +81,123 @@ def main() -> None:
     # Convert non-zero concentrations to log-scale and shift to above zero
     for compound in compounds:
         temp = meta.filter(pl.col("Metadata_Broad_ID") == compound)
-        concs = temp.select(pl.col("Metadata_Concentration")).to_series().sort().unique().to_list()
+        concs = (
+            temp.select(pl.col("Metadata_Concentration"))
+            .to_series()
+            .sort()
+            .unique()
+            .to_list()
+        )
 
         if len(concs) > 1:
-            shift_val = np.abs(np.log10(concs[1] / concs[0])) # Get gap between doses on log-scale
+            shift_val = np.abs(
+                np.log10(concs[1] / concs[0])
+            )  # Get gap between doses on log-scale
             min_conc = np.log10(concs[0])
             temp = temp.with_columns(
-                (pl.col("Metadata_Concentration").log10() - min_conc + shift_val).alias("Metadata_Log10Conc"),
+                (pl.col("Metadata_Concentration").log10() - min_conc + shift_val).alias(
+                    "Metadata_Log10Conc"
+                ),
             )
         else:
-            temp = temp.with_columns(
-                (pl.lit(None)).alias("Metadata_Log10Conc")
-            )
+            temp = temp.with_columns((pl.lit(None)).alias("Metadata_Log10Conc"))
 
         meta_log10 = pl.concat([meta_log10, temp], how="vertical")
 
     # need to merge with OASIS metadata
-    id_map = pl.read_csv("../01_snakemake/inputs/annotations/OASIS_BRDID_map.csv").select([
-        "OASIS_ID", "BROAD_ID"
-    ]).rename({"OASIS_ID": "Metadata_OASIS_ID", "BROAD_ID": "Metadata_Broad_ID"})
+    id_map = (
+        pl.read_csv("../01_snakemake/inputs/annotations/OASIS_BRDID_map.csv")
+        .select(["OASIS_ID", "BROAD_ID"])
+        .rename({"OASIS_ID": "Metadata_OASIS_ID", "BROAD_ID": "Metadata_Broad_ID"})
+    )
 
-    oasis = pl.read_csv("../01_snakemake/inputs/annotations/v5_oasis_03Sept2024_simple.csv").select([
-        "OASIS_ID", "DTXSID", "PREFERRED_NAME", "INCHIKEY", "Purchased_Axiom_Medchemxpress"
-    ]).rename({
-        "OASIS_ID": "Metadata_OASIS_ID",
-        "DTXSID": "Metadata_DTXSID",
-        "PREFERRED_NAME": "Metadata_Compound",
-        "INCHIKEY": "Metadata_Inchikey",
-        "Purchased_Axiom_Medchemxpress": "Metadata_Axiom"
-    }).filter(~pl.col("Metadata_OASIS_ID").is_null()).unique()
+    oasis = (
+        pl.read_csv("../01_snakemake/inputs/annotations/v5_oasis_03Sept2024_simple.csv")
+        .select(
+            [
+                "OASIS_ID",
+                "DTXSID",
+                "PREFERRED_NAME",
+                "INCHIKEY",
+                "Purchased_Axiom_Medchemxpress",
+            ]
+        )
+        .rename(
+            {
+                "OASIS_ID": "Metadata_OASIS_ID",
+                "DTXSID": "Metadata_DTXSID",
+                "PREFERRED_NAME": "Metadata_Compound",
+                "INCHIKEY": "Metadata_Inchikey",
+                "Purchased_Axiom_Medchemxpress": "Metadata_Axiom",
+            }
+        )
+        .filter(~pl.col("Metadata_OASIS_ID").is_null())
+        .unique()
+    )
 
     meta_log10 = meta_log10.join(id_map, on="Metadata_Broad_ID", how="left")
     meta_log10 = meta_log10.join(oasis, on="Metadata_OASIS_ID", how="left")
 
     meta_log10 = meta_log10.with_columns(
-        pl.when(pl.col("Metadata_Concentration") == 0).then(pl.lit("DMSO")).when((pl.col("Metadata_Concentration") > 0) & (pl.col("Metadata_Compound").is_null())).then(pl.lit("JUMP_control")).otherwise(pl.lit("OASIS_cmpd_exposure")).alias("Metadata_well_type")
+        pl.when(pl.col("Metadata_Concentration") == 0)
+        .then(pl.lit("DMSO"))
+        .when(
+            (pl.col("Metadata_Concentration") > 0)
+            & (pl.col("Metadata_Compound").is_null())
+        )
+        .then(pl.lit("JUMP_control"))
+        .otherwise(pl.lit("OASIS_cmpd_exposure"))
+        .alias("Metadata_well_type")
     )
 
     # rename blank compound as DMSO or BRD ID
     meta_log10 = meta_log10.with_columns(
-        pl.when(pl.col("Metadata_Concentration") == 0).then(pl.lit("DMSO")).otherwise(pl.col("Metadata_Compound")).alias("Metadata_Compound")
+        pl.when(pl.col("Metadata_Concentration") == 0)
+        .then(pl.lit("DMSO"))
+        .otherwise(pl.col("Metadata_Compound"))
+        .alias("Metadata_Compound")
     )
     meta_log10 = meta_log10.with_columns(
-        pl.when(pl.col("Metadata_Compound").is_null()).then(pl.col("Metadata_Broad_ID")).otherwise(pl.col("Metadata_Compound")).alias("Metadata_Compound")
+        pl.when(pl.col("Metadata_Compound").is_null())
+        .then(pl.col("Metadata_Broad_ID"))
+        .otherwise(pl.col("Metadata_Compound"))
+        .alias("Metadata_Compound")
     )
 
     # Add plate-level annotations
-    meta_log10 = meta_log10.with_columns(
-        pl.col("Metadata_Plate").str.replace("BR00146", "").cast(pl.Int32).alias("Metadata_temp")
-    ).with_columns(
-        pl.when(pl.col("Metadata_temp") < 87).then(pl.lit("Batch_2"))
-            .when((pl.col("Metadata_temp") > 86) & (pl.col("Metadata_temp") < 122)).then(pl.lit("Batch_1"))
-            .when((pl.col("Metadata_temp") > 121) & (pl.col("Metadata_temp") < 159)).then(pl.lit("Batch_3"))
-            .when((pl.col("Metadata_temp") > 158) & (pl.col("Metadata_temp") < 195)).then(pl.lit("Batch_3"))
-            .when(pl.col("Metadata_temp") == 195).then(pl.lit("Batch_1"))
-            .when(pl.col("Metadata_temp") == 197).then(pl.lit("Batch_2"))
-            .when(pl.col("Metadata_temp") == 196).then(pl.lit("Batch_3")).alias("Metadata_Source"),
-        pl.when(pl.col("Metadata_temp") > 193).then(pl.lit("Target2")).otherwise(pl.lit("OASIS")).alias("Metadata_plate_type")
-    ).drop("Metadata_temp")
+    meta_log10 = (
+        meta_log10.with_columns(
+            pl.col("Metadata_Plate")
+            .str.replace("BR00146", "")
+            .cast(pl.Int32)
+            .alias("Metadata_temp")
+        )
+        .with_columns(
+            pl.when(pl.col("Metadata_temp") < 87)
+            .then(pl.lit("Batch_2"))
+            .when((pl.col("Metadata_temp") > 86) & (pl.col("Metadata_temp") < 122))
+            .then(pl.lit("Batch_1"))
+            .when((pl.col("Metadata_temp") > 121) & (pl.col("Metadata_temp") < 159))
+            .then(pl.lit("Batch_3"))
+            .when((pl.col("Metadata_temp") > 158) & (pl.col("Metadata_temp") < 195))
+            .then(pl.lit("Batch_4"))
+            .when(pl.col("Metadata_temp") == 195)
+            .then(pl.lit("Batch_1"))
+            .when(pl.col("Metadata_temp") == 197)
+            .then(pl.lit("Batch_2"))
+            .when(pl.col("Metadata_temp") == 196)
+            .then(pl.lit("Batch_3"))
+            .alias("Metadata_Source"),
+            pl.when(pl.col("Metadata_temp") > 193)
+            .then(pl.lit("Target2"))
+            .otherwise(pl.lit("OASIS"))
+            .alias("Metadata_plate_type"),
+        )
+        .drop("Metadata_temp")
+    )
 
     meta_log10.write_parquet("../01_snakemake/inputs/metadata/metadata.parquet")
+
 
 if __name__ == "__main__":
     main()

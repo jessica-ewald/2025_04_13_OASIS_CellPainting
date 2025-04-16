@@ -5,12 +5,12 @@ require(ggforce)
 require(reshape2)
 
 if (!requireNamespace("fastbmdR", quietly = TRUE)) {
-  
+
   # Check if remotes is installed, and install it if not
   if (!requireNamespace("remotes", quietly = TRUE)) {
     install.packages("remotes")
   }
-  
+
   # Install fastbmdR from GitHub
   remotes::install_github("jessica-ewald/fastbmdR@v0.0.0.9000")
 }

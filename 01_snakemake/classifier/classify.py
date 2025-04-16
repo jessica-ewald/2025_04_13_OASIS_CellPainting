@@ -3,7 +3,6 @@ import traceback  # noqa: CPY001, D100
 import pandas as pd
 import polars as pl
 from sklearn.model_selection import StratifiedKFold
-from tqdm import tqdm
 from xgboost import XGBClassifier
 import cupy as cp
 from sklearn.preprocessing import LabelEncoder
@@ -57,7 +56,10 @@ def binary_classifier(
     fold = 1
     with cp.cuda.Device(gpu_id):
         for train_index, val_index in kf.split(x, y):
-            x_fold_train, x_fold_val = cp.array(x.iloc[train_index].to_numpy()), cp.array(x.iloc[val_index].to_numpy())
+            x_fold_train, x_fold_val = (
+                cp.array(x.iloc[train_index].to_numpy()),
+                cp.array(x.iloc[val_index].to_numpy()),
+            )
             y_fold_train, y_fold_val = y.iloc[train_index], y.iloc[val_index]
 
             le = LabelEncoder()
@@ -84,23 +86,37 @@ def binary_classifier(
             y_fold_pred = model.predict(x_fold_val)
 
             pred_df.append(
-                pl.DataFrame({
-                    "Metadata_OASIS_ID": list(meta_fold_val["Metadata_OASIS_ID"]),
-                    "y_prob": list(y_fold_prob),
-                    "y_pred": list(y_fold_pred),
-                    "y_actual": list(y_fold_val),
-                    "k_fold": fold,
-                }),
+                pl.DataFrame(
+                    {
+                        "Metadata_OASIS_ID": list(meta_fold_val["Metadata_OASIS_ID"]),
+                        "y_prob": list(y_fold_prob),
+                        "y_pred": list(y_fold_pred),
+                        "y_actual": list(y_fold_val),
+                        "k_fold": fold,
+                    }
+                ),
             )
             fold += 1
 
     return pl.concat(pred_df, how="vertical")
 
-def process_label_and_agg(dat, label_column, agg_type, n_splits, labels, gpu_id, *, shuffle: bool = False, cc: bool = False):
+
+def process_label_and_agg(
+    dat,
+    label_column,
+    agg_type,
+    n_splits,
+    labels,
+    gpu_id,
+    *,
+    shuffle: bool = False,
+    cc: bool = False,
+):
     """Process a single label_column and agg_type combination."""
     try:
         prof = dat.filter(
-            (pl.col("Metadata_AggType") == agg_type) & (pl.col(label_column).is_not_null())
+            (pl.col("Metadata_AggType") == agg_type)
+            & (pl.col(label_column).is_not_null())
         ).rename({label_column: "Label"})
 
         num_0 = prof.filter(pl.col("Label") == 0).height
@@ -133,8 +149,10 @@ def process_label_and_agg(dat, label_column, agg_type, n_splits, labels, gpu_id,
 
             return class_res
 
-    except Exception as e:
-        print(f"An error occurred for label '{label_column}' and aggregation type '{agg_type}':")
+    except Exception:
+        print(
+            f"An error occurred for label '{label_column}' and aggregation type '{agg_type}':"
+        )
         print(traceback.format_exc())
         return None
 
@@ -169,7 +187,11 @@ def predict_binary(
     tasks = [
         (dat, label_column, agg_type, n_splits, labels, i % num_gpus)
         for i, (label_column, agg_type) in enumerate(
-            [(label_column, agg_type) for label_column in labels for agg_type in agg_types]
+            [
+                (label_column, agg_type)
+                for label_column in labels
+                for agg_type in agg_types
+            ]
         )
     ]
 
@@ -184,9 +206,7 @@ def predict_binary(
     pred_results = [res for res in pred_results if res is not None]
     if pred_results:
         pred_df = pl.concat(pred_results, how="vertical")
-        pred_df = pred_df.with_columns(
-            pl.lit("Actual").alias("Model_type")
-        )
+        pred_df = pred_df.with_columns(pl.lit("Actual").alias("Model_type"))
 
     # Random baseline
     null_results = thread_map(
@@ -199,9 +219,7 @@ def predict_binary(
     null_results = [res for res in null_results if res is not None]
     if null_results:
         null_df = pl.concat(null_results, how="vertical")
-        null_df = null_df.with_columns(
-            pl.lit("Random_baseline").alias("Model_type")
-        )
+        null_df = null_df.with_columns(pl.lit("Random_baseline").alias("Model_type"))
 
     # Cell count baseline
     cc_results = thread_map(
@@ -214,9 +232,7 @@ def predict_binary(
     cc_results = [res for res in cc_results if res is not None]
     if cc_results:
         cc_df = pl.concat(cc_results, how="vertical")
-        cc_df = cc_df.with_columns(
-            pl.lit("Cellcount_baseline").alias("Model_type")
-        )
+        cc_df = cc_df.with_columns(pl.lit("Cellcount_baseline").alias("Model_type"))
 
     # write out results
     if not pred_df.is_empty() and not null_df.is_empty() and not cc_df.is_empty():

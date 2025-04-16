@@ -15,7 +15,7 @@ rule compute_distances_R:
     shell:
         """
         for method in {params.distances}; do
-            method_name=$(echo $method | tr -d '[],"') 
+            method_name=$(echo $method | tr -d '[],"')
             Rscript concresponse/compute_distances.R {input} outputs/{features}/{name}/distances/${{method_name}}.parquet {params.cover_var} {params.treatment} {params.categories} ${{method_name}}
         done
         """

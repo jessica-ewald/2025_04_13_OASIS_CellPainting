@@ -1,4 +1,4 @@
-configfile: "./inputs/conf/cellprofiler_ap.json"
+configfile: "./inputs/conf/cellprofiler_filt.json"
 
 # Load rules
 include: "rules/common.smk"
@@ -15,9 +15,9 @@ features = config["features"]
 
 rule all:
      input:
-          f"outputs/{features}/{name}/classifier_results/axiom_continuous_predictions.parquet",
-          f"outputs/{features}/{name}/classifier_results/axiom_binary_predictions.parquet",
-          f"outputs/{features}/{name}/classifier_results/toxcast_cellfree_binary_predictions.parquet",
-          f"outputs/{features}/{name}/classifier_results/toxcast_cellbased_binary_predictions.parquet",
-          f"outputs/{features}/{name}/classifier_results/toxcast_cytotox_binary_predictions.parquet",
+          #f"outputs/{features}/{name}/classifier_results/toxcast_cellfree_binary_predictions.parquet",
+          #f"outputs/{features}/{name}/classifier_results/toxcast_cellbased_binary_predictions.parquet",
+          #f"outputs/{features}/{name}/classifier_results/toxcast_cytotox_binary_predictions.parquet",
+          #f"outputs/{features}/{name}/figures/umaps.pdf",
           f"outputs/{features}/{name}/curves/plots/cp_plots.pdf",
+          #f"outputs/{features}/{name}/curves/plots/cc_plots.pdf",

@@ -17,7 +17,12 @@ def main() -> None:
 
     """
     aws_path = "s3://cellpainting-gallery/cpg0037-oasis/broad/workspace/profiles"
-    batches = ["2025_01_16_U2OS_Batch1", "2025_01_12_U2OS_Batch2", "2025_01_27_U2OS_Batch3", "2025_01_29_U2OS_Batch4"]
+    batches = [
+        "2025_01_16_U2OS_Batch1",
+        "2025_01_12_U2OS_Batch2",
+        "2025_01_27_U2OS_Batch3",
+        "2025_01_29_U2OS_Batch4",
+    ]
 
     prof_dir = Path("../01_snakemake/inputs/profiles/cellprofiler/plates")
     prof_dir.mkdir(parents=True, exist_ok=True)
@@ -29,7 +34,12 @@ def main() -> None:
         plates = re.findall(r"BR\d{8}", aws_output)
 
         for plate in plates:
-            aws("s3", "cp", f"{batch_path}{plate}/{plate}.csv.gz", f"{prof_dir}/{plate}.csv.gz")
+            aws(
+                "s3",
+                "cp",
+                f"{batch_path}{plate}/{plate}.csv.gz",
+                f"{prof_dir}/{plate}.csv.gz",
+            )
 
 
 if __name__ == "__main__":

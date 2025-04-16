@@ -14,12 +14,16 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, plot_path: str) -> N
     cc = (
         pl.read_parquet(cc_pod)
         .filter(
-            pl.col("all.pass") == True,
+            pl.col("all.pass"),
         )
         .select(["Metadata_Compound", "bmd"])
         .rename({"bmd": "Metadata_cc_POD"})
     )
-    morph = pl.read_parquet(morph_pod).select(["Metadata_Compound", "bmd"]).rename({"bmd": "Metadata_morph_POD"})
+    morph = (
+        pl.read_parquet(morph_pod)
+        .select(["Metadata_Compound", "bmd"])
+        .rename({"bmd": "Metadata_morph_POD"})
+    )
 
     # Add PODs to metadata
     data = data.join(cc, on="Metadata_Compound", how="left")
@@ -27,22 +31,26 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, plot_path: str) -> N
 
     # Add columns to label different sample subsets based on their bioactivity
     data = data.with_columns(
-        (pl.col("Metadata_Log10Conc") > pl.col("Metadata_morph_POD")).alias("Metadata_Bioactive"),
-        (pl.col("Metadata_Log10Conc") < pl.col("Metadata_cc_POD")).alias("Metadata_No_Cytotox"),
+        (pl.col("Metadata_Log10Conc") > pl.col("Metadata_morph_POD")).alias(
+            "Metadata_Bioactive"
+        ),
+        (pl.col("Metadata_Log10Conc") < pl.col("Metadata_cc_POD")).alias(
+            "Metadata_No_Cytotox"
+        ),
     )
 
     data = data.with_columns(
-        pl.when(pl.col("Metadata_Bioactive") == False)
+        pl.when(not pl.col("Metadata_Bioactive"))
         .then(False)
-        .when(pl.col("Metadata_Bioactive") == True)
+        .when(pl.col("Metadata_Bioactive"))
         .then(True)
         .otherwise(False)
         .alias("Metadata_Bioactive"),
     )
     data = data.with_columns(
-        pl.when(pl.col("Metadata_No_Cytotox") == False)
+        pl.when(not pl.col("Metadata_No_Cytotox"))
         .then(False)
-        .when(pl.col("Metadata_No_Cytotox") == True)
+        .when(pl.col("Metadata_No_Cytotox"))
         .then(True)
         .otherwise(True)
         .alias("Metadata_No_Cytotox"),
@@ -52,7 +60,9 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, plot_path: str) -> N
 
     data = data.to_pandas()
     data.sort_values(["Metadata_Plate", "Metadata_Well"], inplace=True)
-    data.index = [f"{row['Metadata_Plate']}__{row['Metadata_Well']}" for _, row in data.iterrows()]
+    data.index = [
+        f"{row['Metadata_Plate']}__{row['Metadata_Well']}" for _, row in data.iterrows()
+    ]
     data = data.loc[~data.index.duplicated(keep="first")]
 
     metadata = data[metadata_cols]

@@ -4,12 +4,12 @@ require(parallel)
 
 ######## 0. Make sure fastbmdR is installed
 if (!requireNamespace("fastbmdR", quietly = TRUE)) {
-  
+
   # Check if remotes is installed, and install it if not
   if (!requireNamespace("remotes", quietly = TRUE)) {
     install.packages("remotes")
   }
-  
+
   # Install fastbmdR from GitHub
   remotes::install_github("jessica-ewald/fastbmdR@v0.0.0.9000")
 }

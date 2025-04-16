@@ -23,7 +23,9 @@ def main() -> None:
     # Get column schema
     schema = pl.read_csv(f"{input_profile_path}/{plates[0]}", infer_schema_length=10000)
     meta_cols = [col for col in schema.columns if "Metadata" in col]
-    schema = schema.with_columns([pl.col(col).cast(pl.Float64) for col in schema.columns if col not in meta_cols])
+    schema = schema.with_columns(
+        [pl.col(col).cast(pl.Float64) for col in schema.columns if col not in meta_cols]
+    )
     schema = schema.schema
 
     # Read in data for each plate

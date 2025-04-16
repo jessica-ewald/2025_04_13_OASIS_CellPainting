@@ -44,18 +44,24 @@ def get_plate_stats(dframe: pd.DataFrame):
     stats = pd.concat([median, mad, min_, max_, count])
     stats.reset_index(inplace=True)
     stats = stats.melt(id_vars=["Metadata_Plate", "stat"], var_name="feature")
-    stats = stats.pivot(index=["Metadata_Plate", "feature"], columns="stat", values="value")
+    stats = stats.pivot(
+        index=["Metadata_Plate", "feature"], columns="stat", values="value"
+    )
     stats.reset_index(inplace=True)
-    stats["abs_coef_var"] = (stats["mad"] / stats["median"]).fillna(0).abs().replace(np.inf, 0)
-    stats = stats.astype({
-        "min": np.float32,
-        "max": np.float32,
-        "count": np.int32,
-        "median": np.float32,
-        "mad": np.float32,
-        "abs_coef_var": np.float32,
-        "feature": "category",
-    })
+    stats["abs_coef_var"] = (
+        (stats["mad"] / stats["median"]).fillna(0).abs().replace(np.inf, 0)
+    )
+    stats = stats.astype(
+        {
+            "min": np.float32,
+            "max": np.float32,
+            "count": np.int32,
+            "median": np.float32,
+            "mad": np.float32,
+            "abs_coef_var": np.float32,
+            "feature": "category",
+        }
+    )
     return stats
 
 

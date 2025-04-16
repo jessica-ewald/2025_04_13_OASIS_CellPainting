@@ -9,7 +9,7 @@ features = config["features"]
 scenario = config["workflow"]
 name = config["name"]
 
-# Rules 
+# Rules
 rule compute_negcon_stats:
     input:
         f"inputs/profiles/{features}/raw.parquet",
