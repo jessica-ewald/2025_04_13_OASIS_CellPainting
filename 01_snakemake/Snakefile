@@ -1,4 +1,4 @@
-configfile: "./inputs/conf/cellprofiler_filt.json"
+configfile: "./inputs/conf/cellprofiler.json"
 
 # Load rules
 include: "rules/common.smk"

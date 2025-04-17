@@ -3,6 +3,7 @@ import matplotlib
 import matplotlib.pyplot as plt
 import polars as pl
 import scanpy as sc
+import seaborn as sns
 from matplotlib.backends.backend_pdf import PdfPages
 
 matplotlib.use("Agg")
@@ -127,3 +128,85 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, plot_path: str) -> N
         )
         pdf.savefig()
         plt.close()
+
+        # Add cell count boxplot
+        plt.figure(figsize=(10, 6))
+        sns.boxplot(
+            data=data[data["Metadata_well_type"] == "DMSO"],
+            x="Metadata_Source",
+            y="Metadata_Count_Cells",
+            palette="pastel"
+        )
+        plt.xlabel("Metadata Source")
+        plt.ylabel("Cell Count")
+        plt.title("DMSO Cell Count by Source")
+        plt.tight_layout()
+
+        pdf.savefig()
+        plt.close()
+
+        # Add cell count boxplot by plate
+        sns.set(style="whitegrid")
+        g = sns.catplot(
+            data=data[data["Metadata_well_type"] == "DMSO"],
+            x="Metadata_Plate",
+            y="Metadata_Count_Cells",
+            col="Metadata_Source",
+            kind="box",
+            col_wrap=2,
+            height=4,
+            aspect=1.5,
+            palette="pastel",
+            sharex=False,
+            sharey=True 
+        )
+
+        for ax in g.axes.flatten():
+            ax.set_xticklabels(ax.get_xticklabels(), rotation=90)
+        g.set_axis_labels("Plate", "Cell Count")
+        g.fig.subplots_adjust(top=0.9)
+        g.fig.suptitle("Cell Count per Plate by Batch")
+        plt.tight_layout()
+
+        pdf.savefig()
+        plt.close()
+
+        # Plot mean cell count by well position
+        df = pl.read_parquet(prof_path).select(
+            ["Metadata_Source", "Metadata_Plate", "Metadata_Well", "Metadata_well_type", "Metadata_Count_Cells"]
+        ).group_by(["Metadata_Source", "Metadata_Well"]).agg([
+            pl.col("Metadata_Count_Cells").mean()
+        ]).to_pandas()
+
+        df["Well_Row"] = df["Metadata_Well"].str.extract(r"([A-P])")
+        df["Well_Col"] = df["Metadata_Well"].str.extract(r"(\d{2})")
+
+        row_order = list("ABCDEFGHIJKLMNOP")
+
+
+        sources = df["Metadata_Source"].unique()
+        for source in sources:
+            sub_df = df[df["Metadata_Source"] == source]
+            
+            heatmap_data = (
+                sub_df.groupby(["Well_Row", "Well_Col"])["Metadata_Count_Cells"]
+                .mean()
+                .unstack()
+                .reindex(index=row_order)
+            )
+
+            plt.figure(figsize=(14, 8))
+            sns.heatmap(
+                heatmap_data,
+                cmap="viridis",
+                linewidths=0.5,
+                linecolor="white",
+                cbar_kws={"label": "Mean Cell Count"},
+            )
+            plt.title(f"Cell Count by Well Position — {source}")
+            plt.xlabel("Well Column")
+            plt.ylabel("Well Row")
+            plt.tight_layout()
+            pdf.savefig()
+            plt.close()
+
