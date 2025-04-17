@@ -13,9 +13,7 @@ def make_umaps(prof_path: str, morph_pod: str, cc_pod: str, plot_path: str) -> N
 
     cc = (
         pl.read_parquet(cc_pod)
-        .filter(
-            (pl.col("all.pass") == True)
-        )
+        .filter((pl.col("all.pass") == True))
         .select(["Metadata_Compound", "bmd"])
         .rename({"bmd": "Metadata_cc_POD"})
     )
